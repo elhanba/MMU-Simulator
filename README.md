@@ -6,8 +6,8 @@ A dual-interface **Memory Management Unit (MMU) Simulator** built in **C** (for 
 
 ## 📁 Project Structure
 
-├── mmu_simulator.c # CLI-based MMU Simulator (ARM64 assembly used for address breakdown)
-├── mmu_simulator.html # Browser-based GUI MMU Simulator
+- mmu_simulator.c # CLI-based MMU Simulator (ARM64 assembly used for address breakdown)
+- mmu_simulator.html # Browser-based GUI MMU Simulator
 
 ---
 
