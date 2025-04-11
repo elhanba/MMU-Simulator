@@ -52,5 +52,5 @@ A dual-interface **Memory Management Unit (MMU) Simulator** built in **C** (for 
 - GCC (ARM64 environment for inline assembly)
 
 **Compile & Run:**
-gcc -o mmu_simulator mmu_simulator.c
-./mmu_simulator
+- gcc -o mmu_simulator mmu_simulator.c
+- ./mmu_simulator
