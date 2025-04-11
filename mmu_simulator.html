@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMU Simulator - Virtual Memory Management</title>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #166088;
+            --success: #47a025;
+            --danger: #d9534f;
+            --warning: #f0ad4e;
+            --info: #5bc0de;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --gray: #6c757d;
+            --bg-color: #f0f4f8;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+        
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        
+        h2 {
+            color: var(--secondary);
+            margin-top: 0;
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 8px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: var(--secondary);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+        }
+        
+        .btn-success:hover {
+            background-color: #3c8a1e;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+        }
+        
+        .btn-danger:hover {
+            background-color: #c9302c;
+        }
+        
+        .btn-warning {
+            background-color: var(--warning);
+        }
+        
+        .btn-warning:hover {
+            background-color: #ec971f;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(550px, 1fr));
+            gap: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e9ecef;
+        }
+        
+        .memory-visualization {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        .address-breakdown {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .binary-representation {
+            font-family: monospace;
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-align: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        .bits-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-top: 5px;
+            color: var(--gray);
+            padding: 0 10px;
+        }
+        
+        .page-offset-display {
+            display: flex;
+            width: 100%;
+        }
+        
+        .page-number {
+            background-color: var(--info);
+            padding: 10px;
+            color: white;
+            flex: 1;
+            text-align: center;
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .offset {
+            background-color: var(--warning);
+            padding: 10px;
+            color: white;
+            flex: 1;
+            text-align: center;
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .log-container {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .log-info {
+            background-color: #e3f2fd;
+            color: #0d47a1;
+        }
+        
+        .log-success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .log-warning {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        
+        .log-error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 7px;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 10px;
+            color: white;
+        }
+        
+        .badge-success {
+            background-color: var(--success);
+        }
+        
+        .badge-warning {
+            background-color: var(--warning);
+        }
+        
+        .badge-danger {
+            background-color: var(--danger);
+        }
+        
+        .badge-info {
+            background-color: var(--info);
+        }
+        
+        .badge-secondary {
+            background-color: var(--gray);
+        }
+        
+        .perm-r { color: #2e7d32; }
+        .perm-w { color: #c62828; }
+        .perm-x { color: #0d47a1; }
+        
+        .perm-denied { color: #bdbdbd; text-decoration: line-through; }
+        
+        .tlb-hit-indicator, .tlb-miss-indicator, .page-fault-indicator {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .tlb-hit-indicator {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .tlb-miss-indicator {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        
+        .page-fault-indicator {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .form-row > div {
+            flex: 1;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .translation-arrow {
+            font-size: 24px;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        @keyframes highlight {
+            0% { background-color: var(--light); }
+            50% { background-color: #ffecb3; }
+            100% { background-color: var(--light); }
+        }
+        
+        .highlight {
+            animation: highlight 1.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Memory Management Unit (MMU) Simulator</h1>
+            <p>Simulating virtual-to-physical address translation with TLB and page table</p>
+        </header>
+        
+        <div class="grid">
+            <div>
+                <div class="card">
+                    <h2>Address Translation</h2>
+                    <div class="form-group">
+                        <label for="virtualAddress">Virtual Address (hex):</label>
+                        <input type="text" id="virtualAddress" placeholder="e.g., 0x1345">
+                    </div>
+                    <div class="form-group">
+                        <label>Access Type:</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="radio" id="accessRead" name="accessType" value="r" checked>
+                                <label for="accessRead">Read</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="radio" id="accessWrite" name="accessType" value="w">
+                                <label for="accessWrite">Write</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="radio" id="accessExec" name="accessType" value="x">
+                                <label for="accessExec">Execute</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="translateBtn" class="btn-success">Translate Address</button>
+                </div>
+                
+                <div class="card">
+                    <h2>Address Breakdown</h2>
+                    <div class="memory-visualization">
+                        <div class="address-breakdown">
+                            <div class="binary-representation" id="binaryRepresentation">00000000000000000000 000000000000</div>
+                            <div class="bits-label">
+                                <span>Bits 31-12 (Page Number)</span>
+                                <span>Bits 11-0 (Offset)</span>
+                            </div>
+                        </div>
+                        <div class="page-offset-display">
+                            <div class="page-number">
+                                Page Number: <span id="pageNumberHex">0x00000</span>
+                            </div>
+                            <div class="offset">
+                                Offset: <span id="offsetHex">0x000</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tlb-hit-indicator" id="tlbHitIndicator">
+                        TLB Hit! Found mapping in Translation Lookaside Buffer.
+                    </div>
+                    <div class="tlb-miss-indicator" id="tlbMissIndicator">
+                        TLB Miss! Looking up in page table...
+                    </div>
+                    <div class="page-fault-indicator" id="pageFaultIndicator">
+                        Page Fault! Virtual page not in page table.
+                    </div>
+                    <div class="translation-arrow">↓</div>
+                    <div class="form-group">
+                        <label for="physicalAddress">Physical Address:</label>
+                        <input type="text" id="physicalAddress" readonly placeholder="Translated physical address will appear here">
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2>Add Page Mapping</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="virtualPage">Virtual Page (hex):</label>
+                            <input type="text" id="virtualPage" placeholder="e.g., 0x5">
+                        </div>
+                        <div class="form-group">
+                            <label for="physicalPage">Physical Page (hex):</label>
+                            <input type="text" id="physicalPage" placeholder="e.g., 0x90000">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Permissions:</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="permRead" checked>
+                                <label for="permRead" class="perm-r">Read</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="permWrite">
+                                <label for="permWrite" class="perm-w">Write</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="permExec">
+                                <label for="permExec" class="perm-x">Execute</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="addMappingBtn">Add Mapping</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <h2>Page Table</h2>
+                    <table id="pageTable">
+                        <thead>
+                            <tr>
+                                <th>Virtual Page</th>
+                                <th>Physical Page</th>
+                                <th>Permissions</th>
+                                <th>Present</th>
+                                <th>Dirty</th>
+                                <th>Accessed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Page table entries -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="card">
+                    <h2>Translation Lookaside Buffer (TLB)</h2>
+                    <table id="tlbTable">
+                        <thead>
+                            <tr>
+                                <th>Index</th>
+                                <th>Virtual Page</th>
+                                <th>Physical Page</th>
+                                <th>Permissions</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- TLB entries -->
+                        </tbody>
+                    </table>
+                    <button id="flushTlbBtn" class="btn-warning">Flush TLB</button>
+                </div>
+                
+                <div class="card">
+                    <h2>Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Translations</div>
+                            <div class="stat-value" id="statTotalTranslations">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">TLB Hits</div>
+                            <div class="stat-value" id="statTlbHits">0</div>
+                            <div class="stat-label">Hit Rate: <span id="statHitRate">0%</span></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">TLB Misses</div>
+                            <div class="stat-value" id="statTlbMisses">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Page Faults</div>
+                            <div class="stat-value" id="statPageFaults">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Event Log</h2>
+                    <div class="log-container" id="eventLog">
+                        <!-- Log entries -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const PAGE_SIZE = 4096;
+        const PAGE_SHIFT = 12;
+        const OFFSET_MASK = 0xFFF;
+        const TLB_SIZE = 8;
+        
+        const READ_PERMISSION = 0x1;
+        const WRITE_PERMISSION = 0x2;
+        const EXEC_PERMISSION = 0x4;
+
+        const mmu = {
+            pageTable: [
+                { virtualPage: 0x00000, physicalPage: 0x30000, permissions: READ_PERMISSION | WRITE_PERMISSION | EXEC_PERMISSION, present: true, dirty: false, accessed: false },
+                { virtualPage: 0x00001, physicalPage: 0x21000, permissions: READ_PERMISSION | WRITE_PERMISSION, present: true, dirty: false, accessed: false },
+                { virtualPage: 0x00002, physicalPage: 0x45000, permissions: READ_PERMISSION | EXEC_PERMISSION, present: true, dirty: false, accessed: false },
+                { virtualPage: 0x00003, physicalPage: 0x72000, permissions: READ_PERMISSION, present: true, dirty: false, accessed: false },
+                { virtualPage: 0x00004, physicalPage: 0x80000, permissions: READ_PERMISSION | WRITE_PERMISSION, present: true, dirty: false, accessed: false }
+            ],
+            tlb: Array(TLB_SIZE).fill().map(() => ({ valid: false })),
+            nextTlbEntry: 0,
+            stats: {
+                totalTranslations: 0,
+                tlbHits: 0,
+                tlbMisses: 0,
+                pageFaults: 0
+            }
+        };
+        
+        const virtualAddressInput = document.getElementById('virtualAddress');
+        const physicalAddressInput = document.getElementById('physicalAddress');
+        const translateBtn = document.getElementById('translateBtn');
+        const addMappingBtn = document.getElementById('addMappingBtn');
+        const flushTlbBtn = document.getElementById('flushTlbBtn');
+        const pageTable = document.getElementById('pageTable');
+        const tlbTable = document.getElementById('tlbTable');
+        const eventLog = document.getElementById('eventLog');
+        const binaryRepresentation = document.getElementById('binaryRepresentation');
+        const pageNumberHex = document.getElementById('pageNumberHex');
+        const offsetHex = document.getElementById('offsetHex');
+        const tlbHitIndicator = document.getElementById('tlbHitIndicator');
+        const tlbMissIndicator = document.getElementById('tlbMissIndicator');
+        const pageFaultIndicator = document.getElementById('pageFaultIndicator');
+
+        function getPageNumber(virtualAddr) {
+            return Math.floor(virtualAddr / PAGE_SIZE);
+        }
+        
+        function getPageOffset(virtualAddr) {
+            return virtualAddr & OFFSET_MASK;
+        }
+        
+        function calculatePhysicalAddress(physicalPage, offset) {
+            return (physicalPage << PAGE_SHIFT) | offset;
+        }
+        
+        function hexToDecimal(hexStr) {
+            if (hexStr.startsWith('0x')) {
+                hexStr = hexStr.substring(2);
+            }
+            return parseInt(hexStr, 16);
+        }
+        
+        function decimalToHex(decimal) {
+            return '0x' + decimal.toString(16).padStart(2, '0');
+        }
+        
+        function updateBinaryRepresentation(virtualAddr) {
+            const binary = virtualAddr.toString(2).padStart(32, '0');
+            const pageNumPart = binary.substring(0, 20);
+            const offsetPart = binary.substring(20);
+            binaryRepresentation.innerHTML = `${pageNumPart} ${offsetPart}`;
+        }
+        
+        function updateAddressBreakdown(virtualAddr) {
+            const pageNum = getPageNumber(virtualAddr);
+            const offset = getPageOffset(virtualAddr);
+            
+            pageNumberHex.textContent = decimalToHex(pageNum);
+            offsetHex.textContent = decimalToHex(offset);
+            updateBinaryRepresentation(virtualAddr);
+        }
+        
+        function checkTlb(pageNumber) {
+            for (let i = 0; i < TLB_SIZE; i++) {
+                if (mmu.tlb[i].valid && mmu.tlb[i].virtualPage === pageNumber) {
+                    return mmu.tlb[i];
+                }
+            }
+            return null;
+        }
+        
+        function addToTlb(virtualPage, physicalPage, permissions) {
+            mmu.tlb[mmu.nextTlbEntry] = {
+                virtualPage,
+                physicalPage,
+                permissions,
+                valid: true
+            };
+            mmu.nextTlbEntry = (mmu.nextTlbEntry + 1) % TLB_SIZE;
+            updateTlbTable();
+        }
+        
+        function flushTlb() {
+            for (let i = 0; i < TLB_SIZE; i++) {
+                mmu.tlb[i].valid = false;
+            }
+            addLogEntry('TLB has been flushed.', 'warning');
+            updateTlbTable();
+        }
+        
+        function findPageTableEntry(pageNumber) {
+            return mmu.pageTable.find(entry => entry.virtualPage === pageNumber && entry.present);
+        }
+        
+        function translateAddress() {
+            tlbHitIndicator.style.display = 'none';
+            tlbMissIndicator.style.display = 'none';
+            pageFaultIndicator.style.display = 'none';
+            
+            let virtualAddr;
+            try {
+                virtualAddr = hexToDecimal(virtualAddressInput.value);
+            } catch (e) {
+                addLogEntry('Invalid virtual address format. Please use hexadecimal (e.g., 0x1345).', 'error');
+                return;
+            }
+            
+            const accessType = document.querySelector('input[name="accessType"]:checked').value;
+            let accessFlag;
+            switch (accessType) {
+                case 'r': accessFlag = READ_PERMISSION; break;
+                case 'w': accessFlag = WRITE_PERMISSION; break;
+                case 'x': accessFlag = EXEC_PERMISSION; break;
+            }
+            
+            mmu.stats.totalTranslations++;
+
+            const pageNumber = getPageNumber(virtualAddr);
+            const offset = getPageOffset(virtualAddr);
+            
+            updateAddressBreakdown(virtualAddr);
+            
+            addLogEntry(`Translating virtual address ${decimalToHex(virtualAddr)} (${accessType} access)...`, 'info');
+
+            const tlbEntry = checkTlb(pageNumber);
+            if (tlbEntry) {
+                mmu.stats.tlbHits++;
+                tlbHitIndicator.style.display = 'block';
+                addLogEntry('TLB Hit! Found mapping in Translation Lookaside Buffer.', 'success');
+                
+                if ((tlbEntry.permissions & accessFlag) === 0) {
+                    addLogEntry(`Access violation! Insufficient ${accessType} permission for this page.`, 'error');
+                    physicalAddressInput.value = 'Access Denied';
+                    return;
+                }
+                
+                if (accessFlag === WRITE_PERMISSION) {
+                    const ptEntry = findPageTableEntry(pageNumber);
+                    if (ptEntry) {
+                        ptEntry.dirty = true;
+                        updatePageTable();
+                    }
+                }
+                
+                const physicalAddr = calculatePhysicalAddress(tlbEntry.physicalPage, offset);
+                physicalAddressInput.value = decimalToHex(physicalAddr);
+                addLogEntry(`Translated to physical address ${decimalToHex(physicalAddr)}`, 'success');
+                highlightTlbEntry(pageNumber);
+            } else {
+                mmu.stats.tlbMisses++;
+                tlbMissIndicator.style.display = 'block';
+                addLogEntry('TLB Miss! Looking up in page table...', 'warning');
+
+                const pageTableEntry = findPageTableEntry(pageNumber);
+                if (pageTableEntry) {
+                    if ((pageTableEntry.permissions & accessFlag) === 0) {
+                        addLogEntry(`Access violation! Insufficient ${accessType} permission for this page.`, 'error');
+                        physicalAddressInput.value = 'Access Denied';
+                        return;
+                    }
+                    
+                    pageTableEntry.accessed = true;
+                    if (accessFlag === WRITE_PERMISSION) {
+                        pageTableEntry.dirty = true;
+                    }
+                    
+                    addToTlb(pageNumber, pageTableEntry.physicalPage, pageTableEntry.permissions);
+                    
+                    const physicalAddr = calculatePhysicalAddress(pageTableEntry.physicalPage, offset);
+                    physicalAddressInput.value = decimalToHex(physicalAddr);
+                    addLogEntry(`Translated to physical address ${decimalToHex(physicalAddr)}`, 'success');
+                    highlightPageTableEntry(pageNumber);
+                } else {
+                    mmu.stats.pageFaults++;
+                    pageFaultIndicator.style.display = 'block';
+                    addLogEntry(`Page fault! Virtual page ${decimalToHex(pageNumber)} is not in the page table.`, 'error');
+                    physicalAddressInput.value = 'Page Fault';
+                }
+            }
+            
+            updateStatistics();
+        }
+        
+        function addPageMapping() {
+            const virtualPage = hexToDecimal(document.getElementById('virtualPage').value);
+            const physicalPage = hexToDecimal(document.getElementById('physicalPage').value);
+            
+            let permissions = 0;
+            if (document.getElementById('permRead').checked) permissions |= READ_PERMISSION;
+            if (document.getElementById('permWrite').checked) permissions |= WRITE_PERMISSION;
+            if (document.getElementById('permExec').checked) permissions |= EXEC_PERMISSION;
+            
+            const existingIndex = mmu.pageTable.findIndex(entry => entry.virtualPage === virtualPage);
+            if (existingIndex !== -1) {
+                mmu.pageTable[existingIndex].physicalPage = physicalPage;
+                mmu.pageTable[existingIndex].permissions = permissions;
+                mmu.pageTable[existingIndex].present = true;
+                mmu.pageTable[existingIndex].dirty = false;
+                mmu.pageTable[existingIndex].accessed = false;
+                
+                addLogEntry(`Updated mapping: Virtual page ${decimalToHex(virtualPage)} → Physical page ${decimalToHex(physicalPage)}`, 'info');
+            } else {
+                mmu.pageTable.push({
+                    virtualPage,
+                    physicalPage,
+                    permissions,
+                    present: true,
+                    dirty: false,
+                    accessed: false
+                });
+                
+                addLogEntry(`Added new mapping: Virtual page ${decimalToHex(virtualPage)} → Physical page ${decimalToHex(physicalPage)}`, 'success');
+            }
+            
+            flushTlb();
+            updatePageTable();
+        }
+        
+        function updatePageTable() {
+            const tbody = pageTable.querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            mmu.pageTable.forEach(entry => {
+                const row = document.createElement('tr');
+                
+                const cellVPage = document.createElement('td');
+                cellVPage.textContent = decimalToHex(entry.virtualPage);
+                row.appendChild(cellVPage);
+                
+                const cellPPage = document.createElement('td');
+                cellPPage.textContent = decimalToHex(entry.physicalPage);
+                row.appendChild(cellPPage);
+
+                const cellPerms = document.createElement('td');
+                
+                const rSpan = document.createElement('span');
+                rSpan.textContent = 'R';
+                rSpan.className = (entry.permissions & READ_PERMISSION) ? 'perm-r' : 'perm-denied';
+                cellPerms.appendChild(rSpan);
+                
+                const wSpan = document.createElement('span');
+                wSpan.textContent = ' W';
+                wSpan.className = (entry.permissions & WRITE_PERMISSION) ? 'perm-w' : 'perm-denied';
+                cellPerms.appendChild(wSpan);
+                
+                const xSpan = document.createElement('span');
+                xSpan.textContent = ' X';
+                xSpan.className = (entry.permissions & EXEC_PERMISSION) ? 'perm-x' : 'perm-denied';
+                cellPerms.appendChild(xSpan);
+                
+                row.appendChild(cellPerms);
+                
+                const cellPresent = document.createElement('td');
+                cellPresent.textContent = entry.present ? 'Yes' : 'No';
+                row.appendChild(cellPresent);
+                
+                const cellDirty = document.createElement('td');
+                cellDirty.textContent = entry.dirty ? 'Yes' : 'No';
+                row.appendChild(cellDirty);
+                
+                const cellAccessed = document.createElement('td');
+                cellAccessed.textContent = entry.accessed ? 'Yes' : 'No';
+                row.appendChild(cellAccessed);
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        function updateTlbTable() {
+            const tbody = tlbTable.querySelector('tbody');
+            tbody.innerHTML = '';
+            
+            mmu.tlb.forEach((entry, index) => {
+                const row = document.createElement('tr');
+                
+                const cellIndex = document.createElement('td');
+                cellIndex.textContent = index;
+                row.appendChild(cellIndex);
+                
+                if (entry.valid) {
+                    const cellVPage = document.createElement('td');
+                    cellVPage.textContent = decimalToHex(entry.virtualPage);
+                    row.appendChild(cellVPage);
+                    
+                    const cellPPage = document.createElement('td');
+                    cellPPage.textContent = decimalToHex(entry.physicalPage);
+                    row.appendChild(cellPPage);
+                    
+                    const cellPerms = document.createElement('td');
+                    
+                    const rSpan = document.createElement('span');
+                    rSpan.textContent = 'R';
+                    rSpan.className = (entry.permissions & READ_PERMISSION) ? 'perm-r' : 'perm-denied';
+                    cellPerms.appendChild(rSpan);
+                    
+                    const wSpan = document.createElement('span');
+                    wSpan.textContent = ' W';
+                    wSpan.className = (entry.permissions & WRITE_PERMISSION) ? 'perm-w' : 'perm-denied';
+                    cellPerms.appendChild(wSpan);
+                    
+                    const xSpan = document.createElement('span');
+                    xSpan.textContent = ' X';
+                    xSpan.className = (entry.permissions & EXEC_PERMISSION) ? 'perm-x' : 'perm-denied';
+                    cellPerms.appendChild(xSpan);
+                    
+                    row.appendChild(cellPerms);
+                    
+                    const cellStatus = document.createElement('td');
+                    const statusBadge = document.createElement('span');
+                    statusBadge.className = 'badge badge-success';
+                    statusBadge.textContent = 'Valid';
+                    cellStatus.appendChild(statusBadge);
+                    row.appendChild(cellStatus);
+                } else {
+
+                    const cellVPage = document.createElement('td');
+                    cellVPage.textContent = 'INVALID';
+                    row.appendChild(cellVPage);
+                    
+                    const cellPPage = document.createElement('td');
+                    cellPPage.textContent = '-';
+                    row.appendChild(cellPPage);
+                    
+                    const cellPerms = document.createElement('td');
+                    cellPerms.textContent = '-';
+                    row.appendChild(cellPerms);
+                    
+                    const cellStatus = document.createElement('td');
+                    const statusBadge = document.createElement('span');
+                    statusBadge.className = 'badge badge-secondary';
+                    statusBadge.textContent = 'Invalid';
+                    cellStatus.appendChild(statusBadge);
+                    row.appendChild(cellStatus);
+                }
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        function updateStatistics() {
+            document.getElementById('statTotalTranslations').textContent = mmu.stats.totalTranslations;
+            document.getElementById('statTlbHits').textContent = mmu.stats.tlbHits;
+            document.getElementById('statTlbMisses').textContent = mmu.stats.tlbMisses;
+            document.getElementById('statPageFaults').textContent = mmu.stats.pageFaults;
+            
+            const hitRate = mmu.stats.totalTranslations > 0 
+                ? (mmu.stats.tlbHits / mmu.stats.totalTranslations * 100).toFixed(2) 
+                : 0;
+            document.getElementById('statHitRate').textContent = hitRate + '%';
+        }
+        
+        function addLogEntry(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            eventLog.appendChild(entry);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+        
+        function highlightTlbEntry(pageNumber) {
+            const rows = tlbTable.querySelectorAll('tbody tr');
+            
+            rows.forEach((row, index) => {
+                if (mmu.tlb[index].valid && mmu.tlb[index].virtualPage === pageNumber) {
+                    row.classList.add('highlight');
+                    setTimeout(() => {
+                        row.classList.remove('highlight');
+                    }, 1500);
+                }
+            });
+        }
+        
+        function highlightPageTableEntry(pageNumber) {
+            const rows = pageTable.querySelectorAll('tbody tr');
+            
+            rows.forEach((row, index) => {
+                if (mmu.pageTable[index].virtualPage === pageNumber) {
+                    row.classList.add('highlight');
+                    setTimeout(() => {
+                        row.classList.remove('highlight');
+                    }, 1500);
+                }
+            });
+        }
+        
+        translateBtn.addEventListener('click', translateAddress);
+        addMappingBtn.addEventListener('click', addPageMapping);
+        flushTlbBtn.addEventListener('click', flushTlb);
+        
+        function initializeUI() {
+            updatePageTable();
+            updateTlbTable();
+            updateStatistics();
+            addLogEntry('MMU Simulator initialized successfully.', 'info');
+        }
+        
+        document.addEventListener('DOMContentLoaded', initializeUI);
+    </script>
+</body>
+</html>
